@@ -24,17 +24,15 @@ app.get('/config', (req, res) => {
     });
 });
 
-// Middleware to restrict access to specific IPs
-const allowedIPs = ['116.12.63.19', '::1']; // Include ::1 for IPv6 support
-const ipRestrictionMiddleware = (req, res, next) => {
-    const forwardedIPs = req.headers['x-forwarded-for'] || req.socket.remoteAddress; // Get client IPs
-    const clientIPs = forwardedIPs.split(',').map(ip => ip.trim()); // Split and trim IPs
+// Middleware to restrict access based on a special header
+const specialID = process.env.SPECIAL_ID; // Read special ID from environment variable
+const specialIdMiddleware = (req, res, next) => {
+    const specialIdHeader = req.headers['x-special-id']; // Get the special ID header
 
-    console.log('Client IPs:', clientIPs); // Log the client IPs for debugging
+    console.log('Received x-special-id:', specialIdHeader); // Log the received special ID for debugging
 
-    // Check if any of the client IPs match the allowed IPs
-    if (clientIPs.some(ip => allowedIPs.includes(ip))) {
-        next(); // IP is allowed, proceed to the next middleware
+    if (specialIdHeader === specialID) {
+        next(); // Header is valid, proceed to the next middleware
     } else {
         res.status(403).send('Access denied: You are not allowed to access this resource.'); // Deny access
     }
@@ -50,8 +48,8 @@ app.post('/collect', (req, res) => {
     res.status(200).send('Data collected successfully!');
 });
 
-// Endpoint to display all collected data with IP restriction
-app.get('/data', ipRestrictionMiddleware, (req, res) => {
+// Endpoint to display all collected data with header restriction
+app.get('/data', specialIdMiddleware, (req, res) => {
     res.json(dataStore);
 });
 
