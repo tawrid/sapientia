@@ -30,7 +30,7 @@ const specialIdMiddleware = (req, res, next) => {
     const specialIdHeader = req.headers['x-special-id']; // Get the special ID header
 
     console.log('Received x-special-id:', specialIdHeader); // Log the received special ID for debugging
-
+    console.log('Environemnt x-special-id:', specialID);
     if (specialIdHeader === specialID) {
         next(); // Header is valid, proceed to the next middleware
     } else {
