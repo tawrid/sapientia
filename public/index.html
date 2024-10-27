@@ -1,0 +1,68 @@
+<!-- public/index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Info Collector</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<body>
+    <h1>Client Information Collection</h1>
+    <p id="status">Collecting information...</p>
+
+    <script>
+        $(document).ready(function() {
+            // Fetch API keys and system username from the backend
+            $.get('/config', function(config) {
+                const { opencageApiKey, ipinfoToken, systemUsername } = config;
+
+                // Collect client info
+                const userAgent = navigator.userAgent;
+                const platform = navigator.platform;
+
+                // Get IP and GEO data from ipinfo
+                $.get(`https://ipinfo.io?token=${ipinfoToken}`, function(response) {
+                    const ip = response.ip;
+                    const [latitude, longitude] = response.loc.split(",");
+
+                    // Use OpenCage API to get location details
+                    $.get(`https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${opencageApiKey}`, function(geoResponse) {
+                        const geoData = geoResponse.results[0].components;
+                        const locationDetails = {
+                            suburb: geoData.suburb || "N/A",
+                            city: geoData.city || geoData.town || geoData.village || "N/A",
+                            state: geoData.state || "N/A",
+                            country: geoData.country || "N/A"
+                        };
+
+                        // Prepare data to send, using system username from server
+                        const data = {
+                            username: systemUsername,
+                            userAgent: userAgent,
+                            platform: platform,
+                            ip: ip,
+                            geo: locationDetails
+                        };
+
+                        // Send data to the backend server
+                        $.ajax({
+                            url: '/collect',
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(data),
+                            success: function() {
+                                $('#status').text('Information submitted successfully!');
+                            },
+                            error: function() {
+                                $('#status').text('Error submitting information.');
+                            }
+                        });
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
