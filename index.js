@@ -25,15 +25,18 @@ app.get('/config', (req, res) => {
 });
 
 // Middleware to restrict access to specific IP
-const allowedIP = '116.12.63.19';
+const allowedIPs = ['116.12.63.19', '127.0.0.1', '::1'];
 const ipRestrictionMiddleware = (req, res, next) => {
     const clientIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress; // Get client IP
-    if (clientIP === allowedIP) {
+    console.log('Client IP:', clientIP); // Log the client IP for debugging
+    if (allowedIPs.includes(clientIP)) {
         next(); // IP is allowed, proceed to the next middleware
     } else {
         res.status(403).send('Access denied: You are not allowed to access this resource.'); // Deny access
     }
 };
+
+
 
 // Endpoint to collect data
 app.post('/collect', (req, res) => {
