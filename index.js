@@ -25,12 +25,22 @@ app.get('/config', (req, res) => {
 });
 
 // Middleware to restrict access based on a special header
-const specialID = process.env.SPECIAL_ID; // Read special ID from environment variable
-const specialIdMiddleware = (req, res, next) => {
-    const specialIdHeader = req.headers['x-special-id']; // Get the special ID header
+const specialID = process.env.SPECIAL_ID;
 
-    console.log('Received x-special-id:', specialIdHeader); // Log the received special ID for debugging
-    console.log('Environemnt x-special-id:', specialID);
+// Log an error if SPECIAL_ID is undefined
+if (!specialID) {
+    console.error("Error: SPECIAL_ID environment variable is not defined.");
+}
+
+// Middleware to check the special header
+const specialIdMiddleware = (req, res, next) => {
+    if (!specialID) {
+        return res.status(500).send("Server error: Missing required configuration.");
+    }
+
+    const specialIdHeader = req.headers['x-special-id']; // Get the special ID header
+    console.log('Received x-special-id:', specialIdHeader); // Log for debugging
+
     if (specialIdHeader === specialID) {
         next(); // Header is valid, proceed to the next middleware
     } else {
