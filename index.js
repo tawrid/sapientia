@@ -1,12 +1,10 @@
-// index.js
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
-const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const app = express();
-const PORT = 3000; // Change to port 3000
+const PORT = 3000; // Set to port 3000
 
 // Memory-based "database" to store client data
 const dataStore = [];
@@ -52,13 +50,7 @@ app.get('/data', ipRestrictionMiddleware, (req, res) => {
     res.json(dataStore);
 });
 
-// Read SSL certificate and key
-// const options = {
-//     key: fs.readFileSync('key.pem'),
-//     cert: fs.readFileSync('cert.pem')
-// };
-
-// Start HTTPS server on port 443
-app.listen(PORT, () => {
-    console.log(`HTTPS server is running on http://localhost:${PORT}`);
+// Start HTTP server on port 3000
+http.createServer(app).listen(PORT, () => {
+    console.log(`HTTP server is running on http://localhost:${PORT}`);
 });
