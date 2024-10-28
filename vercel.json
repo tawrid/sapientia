@@ -2,14 +2,14 @@
     "version": 2,
     "builds": [
       {
-        "src": "index.js",  // Entry point of your application
-        "use": "@vercel/node"  // Specify that you're using a Node.js runtime
+        "src": "index.js",  
+        "use": "@vercel/node" 
       }
     ],
     "routes": [
       {
-        "src": "/(.*)",  // Catch all route
-        "dest": "index.js"  // Redirect to your Node.js entry point
+        "src": "/(.*)", 
+        "dest": "index.js" 
       }
     ],
     "env": {
