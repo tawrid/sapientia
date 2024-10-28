@@ -4,66 +4,66 @@ const http = require('http');
 const path = require('path');
 const os = require('os');
 const app = express();
-const PORT = 3000; // Set to port 3000
+const PORT = 3000; // HTTP server port
 
-// Memory-based "database" to store client data
+// Memory-based storage for client data
 const dataStore = [];
 
-// Middleware to parse JSON bodies
+// Environment variables for API tokens and special header ID
+const { OPENCAGE_API_KEY, IPINFO_TOKEN, SPECIAL_ID } = process.env;
+
+// Log a warning if any required environment variables are missing
+if (!OPENCAGE_API_KEY || !IPINFO_TOKEN || !SPECIAL_ID) {
+    console.error("Warning: One or more environment variables (OPENCAGE_API_KEY, IPINFO_TOKEN, SPECIAL_ID) are undefined.");
+}
+
+// Middleware to parse JSON request bodies
 app.use(express.json());
 
-// Serve static files from 'public' directory
+// Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Pass tokens and system username to index.html as JavaScript variables
+// Pass tokens and system username to the front end via /config endpoint
 app.get('/config', (req, res) => {
     res.json({
-        opencageApiKey: process.env.OPENCAGE_API_KEY,
-        ipinfoToken: process.env.IPINFO_TOKEN,
+        opencageApiKey: OPENCAGE_API_KEY,
+        ipinfoToken: IPINFO_TOKEN,
         systemUsername: os.userInfo().username
     });
 });
 
-// Middleware to restrict access based on a special header
-const specialID = process.env.SPECIAL_ID;
-
-// Log an error if SPECIAL_ID is undefined
-if (!specialID) {
-    console.error("Error: SPECIAL_ID environment variable is not defined.");
-}
-
-// Middleware to check the special header
+// Middleware to enforce access based on 'x-special-id' header
 const specialIdMiddleware = (req, res, next) => {
-    if (!specialID) {
-        return res.status(500).send("Server error: Missing required configuration.");
+    const clientSpecialId = req.headers['x-special-id']; // Retrieve header value
+    console.log('Received x-special-id:', clientSpecialId); // Log for debugging
+
+    if (!SPECIAL_ID) {
+        return res.status(500).send("Server configuration error: SPECIAL_ID not set.");
     }
 
-    const specialIdHeader = req.headers['x-special-id']; // Get the special ID header
-    console.log('Received x-special-id:', specialIdHeader); // Log for debugging
-
-    if (specialIdHeader === specialID) {
-        next(); // Header is valid, proceed to the next middleware
+    if (clientSpecialId === SPECIAL_ID) {
+        return next(); // Header is valid, proceed
     } else {
-        res.status(403).send('Access denied: You are not allowed to access this resource.'); // Deny access
+        return res.status(403).send('Access denied: Invalid access credentials.');
     }
 };
 
-// Endpoint to collect data
+// Endpoint to collect client data and store it in memory
 app.post('/collect', (req, res) => {
     const clientData = req.body;
     console.log('Data received:', clientData);
 
-    // Save client data to the in-memory "database"
+    // Save the data in the in-memory "database"
     dataStore.push(clientData);
     res.status(200).send('Data collected successfully!');
 });
 
-// Endpoint to display all collected data with header restriction
+// Restricted endpoint to view all collected data, accessible only with the correct header
 app.get('/data', specialIdMiddleware, (req, res) => {
     res.json(dataStore);
 });
 
-// Start HTTP server on port 3000
+// Start the HTTP server on the specified port
 http.createServer(app).listen(PORT, () => {
     console.log(`HTTP server is running on http://localhost:${PORT}`);
 });

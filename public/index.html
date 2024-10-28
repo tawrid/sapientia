@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client Info Collector</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3.3.5/dist/fp.min.js"></script> <!-- FingerprintJS -->
 </head>
 <body>
     <h1>Client Information Collection</h1>
@@ -14,22 +15,32 @@
 
     <script>
         $(document).ready(function() {
-            // Fetch API keys and system username from the backend
+            // Step 1: Fetch API keys and system username from the backend
             $.get('/config', function(config) {
                 const { opencageApiKey, ipinfoToken, systemUsername } = config;
 
-                // Collect client info
+                // Check if necessary tokens are received
+                if (!opencageApiKey || !ipinfoToken) {
+                    $('#status').text('Missing API configuration.');
+                    console.error('Missing required API keys in config.');
+                    return;
+                }
+
+                // Step 2: Collect client info from the browser
                 const userAgent = navigator.userAgent;
                 const platform = navigator.platform;
 
-                // Get IP and GEO data from ipinfo
+                // Step 3: Get IP and GEO data from ipinfo
                 $.get(`https://ipinfo.io?token=${ipinfoToken}`, function(response) {
                     const ip = response.ip;
                     const [latitude, longitude] = response.loc.split(",");
+                    
+                    console.log('Client IP:', ip);
+                    console.log('Latitude:', latitude, 'Longitude:', longitude);
 
-                    // Use OpenCage API to get location details
+                    // Step 4: Use OpenCage API to get more location details
                     $.get(`https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${opencageApiKey}`, function(geoResponse) {
-                        const geoData = geoResponse.results[0].components;
+                        const geoData = geoResponse.results[0]?.components || {};
                         const locationDetails = {
                             suburb: geoData.suburb || "N/A",
                             city: geoData.city || geoData.town || geoData.village || "N/A",
@@ -37,30 +48,54 @@
                             country: geoData.country || "N/A"
                         };
 
-                        // Prepare data to send, using system username from server
-                        const data = {
-                            username: systemUsername,
-                            userAgent: userAgent,
-                            platform: platform,
-                            ip: ip,
-                            geo: locationDetails
-                        };
+                        console.log('Location Details:', locationDetails);
 
-                        // Send data to the backend server
-                        $.ajax({
-                            url: '/collect',
-                            type: 'POST',
-                            contentType: 'application/json',
-                            data: JSON.stringify(data),
-                            success: function() {
-                                $('#status').text('Information submitted successfully!');
-                            },
-                            error: function() {
-                                $('#status').text('Error submitting information.');
-                            }
+                        // Step 5: Initialize FingerprintJS and get the fingerprint
+                        FingerprintJS.load().then(fp => fp.get()).then(result => {
+                            const fingerprint = result.visitorId; // Unique fingerprint hash
+
+                            console.log('Fingerprint:', fingerprint);
+
+                            // Step 6: Prepare data to send, including IP, geo, and fingerprint
+                            const data = {
+                                username: systemUsername,
+                                userAgent: userAgent,
+                                platform: platform,
+                                ip: ip,
+                                geo: locationDetails,
+                                fingerprint: fingerprint
+                            };
+
+                            // Step 7: Send collected data to the backend server
+                            $.ajax({
+                                url: '/collect',
+                                type: 'POST',
+                                contentType: 'application/json',
+                                data: JSON.stringify(data),
+                                success: function() {
+                                    $('#status').text('Information submitted successfully!');
+                                    console.log('Data submitted:', data);
+                                },
+                                error: function(err) {
+                                    $('#status').text('Error submitting information.');
+                                    console.error('Error in submission:', err);
+                                }
+                            });
+                        }).catch(err => {
+                            $('#status').text('Error generating fingerprint.');
+                            console.error('Error with FingerprintJS:', err);
                         });
+                    }).fail(function(err) {
+                        $('#status').text('Error retrieving geolocation data.');
+                        console.error('Error with OpenCage API:', err);
                     });
+                }).fail(function(err) {
+                    $('#status').text('Error retrieving IP information.');
+                    console.error('Error with ipinfo API:', err);
                 });
+            }).fail(function(err) {
+                $('#status').text('Error fetching configuration.');
+                console.error('Error fetching /config:', err);
             });
         });
     </script>
