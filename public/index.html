@@ -7,7 +7,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client Info Collector</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3.3.5/dist/fp.min.js"></script> <!-- FingerprintJS -->
 </head>
 <body>
     <h1>Client Information Collection</h1>
@@ -26,7 +25,7 @@
                     return;
                 }
 
-                // Step 2: Collect client info from the browser
+                // Step 2: Collect client info from browser
                 const userAgent = navigator.userAgent;
                 const platform = navigator.platform;
 
@@ -35,10 +34,11 @@
                     const ip = response.ip;
                     const [latitude, longitude] = response.loc.split(",");
                     
+                    // Log the IP and coordinates for debugging
                     console.log('Client IP:', ip);
                     console.log('Latitude:', latitude, 'Longitude:', longitude);
 
-                    // Step 4: Use OpenCage API to get more location details
+                    // Step 4: Use OpenCage API to get location details
                     $.get(`https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${opencageApiKey}`, function(geoResponse) {
                         const geoData = geoResponse.results[0]?.components || {};
                         const locationDetails = {
@@ -48,42 +48,32 @@
                             country: geoData.country || "N/A"
                         };
 
+                        // Log location details for debugging
                         console.log('Location Details:', locationDetails);
 
-                        // Step 5: Initialize FingerprintJS and get the fingerprint
-                        FingerprintJS.load().then(fp => fp.get()).then(result => {
-                            const fingerprint = result.visitorId; // Unique fingerprint hash
+                        // Step 5: Prepare data to send, including server-provided username
+                        const data = {
+                            username: systemUsername,
+                            userAgent: userAgent,
+                            platform: platform,
+                            ip: ip,
+                            geo: locationDetails
+                        };
 
-                            console.log('Fingerprint:', fingerprint);
-
-                            // Step 6: Prepare data to send, including IP, geo, and fingerprint
-                            const data = {
-                                username: systemUsername,
-                                userAgent: userAgent,
-                                platform: platform,
-                                ip: ip,
-                                geo: locationDetails,
-                                fingerprint: fingerprint
-                            };
-
-                            // Step 7: Send collected data to the backend server
-                            $.ajax({
-                                url: '/collect',
-                                type: 'POST',
-                                contentType: 'application/json',
-                                data: JSON.stringify(data),
-                                success: function() {
-                                    $('#status').text('Information submitted successfully!');
-                                    console.log('Data submitted:', data);
-                                },
-                                error: function(err) {
-                                    $('#status').text('Error submitting information.');
-                                    console.error('Error in submission:', err);
-                                }
-                            });
-                        }).catch(err => {
-                            $('#status').text('Error generating fingerprint.');
-                            console.error('Error with FingerprintJS:', err);
+                        // Step 6: Send collected data to the backend server
+                        $.ajax({
+                            url: '/collect',
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(data),
+                            success: function() {
+                                $('#status').text('Information submitted successfully!');
+                                console.log('Data submitted:', data);
+                            },
+                            error: function(err) {
+                                $('#status').text('Error submitting information.');
+                                console.error('Error in submission:', err);
+                            }
                         });
                     }).fail(function(err) {
                         $('#status').text('Error retrieving geolocation data.');
