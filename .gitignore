@@ -2,3 +2,6 @@
 cert.pem
 csr.pem
 key.pem
+.vercel
+.env*.local
+node_modules
